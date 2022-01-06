@@ -1,0 +1,71 @@
+oauth2Config:
+  azureTenantID: ""
+  clientID: ""
+  clientSecret: ""
+
+  # existingSecret can bet set to the name of a Secret, which should have these values:
+  # OAUTH2_PROXY_CLIENT_ID
+  # OAUTH2_PROXY_CLIENT_SECRET
+  # OAUTH2_PROXY_AZURE_TENANT
+  existingSecret: ""
+
+  emailDomain: "*"
+
+extraEnv: {}
+extraArgs: {}
+
+redis:
+  enabled: true
+  
+    
+ingress:
+  enabled: true
+  hosts:
+    - oauth2-proxy.local
+  annotations: {}
+  tls: {}
+
+replicaCount: 1
+
+image:
+  repository: "quay.io/oauth2-proxy/oauth2-proxy"
+  tag: "v7.0.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

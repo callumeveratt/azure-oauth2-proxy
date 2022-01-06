@@ -1,0 +1,4 @@
+include:
+  - project: k8s/gitlab-ci-templates
+    ref: master
+    file: helm-charts/.gitlab-ci.yml

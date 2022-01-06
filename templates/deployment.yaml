@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "azure-oauth2-proxy.fullname" . }}
+  labels:
+    {{- include "azure-oauth2-proxy.labels" . | nindent 4 }}
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "azure-oauth2-proxy.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "azure-oauth2-proxy.selectorLabels" . | nindent 8 }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ include "azure-oauth2-proxy.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          terminationMessagePolicy: FallbackToLogsOnError            
+          args:
+            - "--silence-ping-logging"
+            {{- range $key, $value := .Values.extraArgs }}
+            {{- if $value }}
+            - {{ printf "--%s=%s" $key $value | quote  }}
+            {{- else }}
+            - --{{ $key }}
+            {{- end }}
+            {{- end }}              
+          ports:
+            - name: http
+              containerPort: 4180
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          envFrom:
+          {{- if .Values.oauth2Config.existingSecret }}
+          - secretRef:
+              name: {{ .Values.oauth2Config.existingSecret }}
+          {{- end }}
+          - secretRef:
+              name: {{ include "azure-oauth2-proxy.fullname" . }}
+          env:
+            - name: OAUTH2_PROXY_HTTP_ADDRESS
+              value: "0.0.0.0:4180"
+            - name: OAUTH2_PROXY_PROVIDER
+              value: azure
+            - name: OAUTH2_PROXY_WHITELIST_DOMAINS
+              value:  {{ .Values.whitelistedDomain }}
+            - name: OAUTH2_PROXY_COOKIE_DOMAINS
+              value:  {{ .Values.cookieDomain }}
+            - name: OAUTH2_PROXY_EMAIL_DOMAINS
+              value: {{ .Values.oauth2Config.emailDomain | quote }}
+            {{- range $k, $v := .Values.extraEnv }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+            {{- if .Values.redis.enabled }}
+            - name: OAUTH2_PROXY_SESSION_STORE_TYPE
+              value: "redis"
+            - name: OAUTH2_PROXY_REDIS_CONNECTION_URL
+              value: "redis://redis-master"
+            - name: OAUTH2_PROXY_REDIS_PASSWORD
+              value: {{ .Values.redis.redisPassword }}
+            {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
